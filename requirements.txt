@@ -1,0 +1,24 @@
+# ── Bank Cyber Fraud Detection — Python Dependencies ──────────────────────────
+# Install: pip install -r requirements.txt
+
+# ── Core ML & Data ──────────────────────────────────────────────────────────
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+imbalanced-learn>=0.11.0
+joblib>=1.3.0
+
+# ── Explainability (SHAP) ───────────────────────────────────────────────────
+shap>=0.44.0
+matplotlib>=3.7.0
+Pillow>=10.0.0
+
+# ── Backend (FastAPI) ────────────────────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.5.0
+
+# ── Frontend (Streamlit) ─────────────────────────────────────────────────────
+streamlit>=1.33.0
+requests>=2.31.0
