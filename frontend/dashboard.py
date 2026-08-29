@@ -1,14 +1,11 @@
 """
 frontend/dashboard.py — Standalone Frontend Entry Point
-Author  : Ekansh Gupta (Frontend Architect)
 Purpose : Thin launcher that re-exports src/app.py so the dashboard can be
           started from EITHER location:
-
           From project root:
               streamlit run frontend/dashboard.py
           OR:
               streamlit run src/app.py
-
           Both commands produce an identical result.
 """
 
