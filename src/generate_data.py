@@ -2,52 +2,54 @@ import pandas as pd
 import numpy as np
 import os
 
-def generate_synthetic_data(num_samples=50000):
-    print(f"Generating {num_samples} realistic banking transactions...")
-    np.random.seed(42)
+def generate_synthetic_data(num_samples=50000, random_seed=42):
+    np.random.seed(random_seed)
+    
+    # 1. Base transaction attributes
+    amounts = np.random.exponential(scale=3000, size=num_samples) + 100
+    times = np.random.randint(0, 24, size=num_samples)
+    tx_types = np.random.choice(['UPI', 'IMPS', 'NEFT', 'RTGS'], size=num_samples, p=[0.6, 0.2, 0.1, 0.1])
+    call_durations = np.zeros(num_samples)
+    otp_failures = np.zeros(num_samples, dtype=int)
+    new_devices = np.zeros(num_samples, dtype=int)
+    payee_ages = np.random.randint(30, 3000, size=num_samples)
+    
+    labels = np.zeros(num_samples, dtype=int)
+    
+    # 2. Inject clear cyber attack patterns
+    for i in range(num_samples):
+        rand_val = np.random.rand()
+        
+        # Pattern A: Digital Arrest Scam (Long call + high amount + new payee)
+        if rand_val < 0.015:
+            labels[i] = 1
+            call_durations[i] = np.random.randint(45, 240)
+            amounts[i] = np.random.uniform(50000, 500000)
+            new_devices[i] = 1
+            payee_ages[i] = np.random.randint(1, 10)
+            
+        # Pattern B: OTP Stealing / SIM Swap (Multiple OTP fails + new device)
+        elif rand_val < 0.025:
+            labels[i] = 1
+            otp_failures[i] = np.random.randint(2, 5)
+            new_devices[i] = 1
+            amounts[i] = np.random.uniform(10000, 100000)
 
-    # Base Features
-    data = {
-        'Transaction_ID': np.arange(1, num_samples + 1),
-        'Transaction_Amount': np.random.exponential(scale=5000, size=num_samples) + 100, # Ranges from 100 to large amounts
-        'Transaction_Type': np.random.choice(['UPI', 'IMPS', 'NEFT', 'RTGS'], num_samples, p=[0.6, 0.2, 0.1, 0.1]),
-        'Time_of_Day': np.random.randint(0, 24, num_samples),
-        'New_Device_Used': np.random.choice([0, 1], num_samples, p=[0.9, 0.1]),
-        'OTP_Failed_Attempts': np.random.choice([0, 1, 2, 3, 4], num_samples, p=[0.85, 0.1, 0.03, 0.01, 0.01]),
-        'Active_Call_Duration_Min': np.random.choice([0, 5, 15, 60, 120, 240], num_samples, p=[0.8, 0.1, 0.05, 0.02, 0.02, 0.01]),
-        'Payee_Account_Age_Days': np.random.randint(1, 3650, num_samples),
-        'Is_Fraud': np.zeros(num_samples, dtype=int)
-    }
-
-    df = pd.DataFrame(data)
-
-    # 🚨 Injecting Specific Cyber Fraud Patterns 🚨
-
-    # 1. "Digital Arrest" Pattern: Long active call duration + Large RTGS/IMPS + Transfer to New Account
-    digital_arrest_mask = (df['Active_Call_Duration_Min'] >= 60) & (df['Transaction_Amount'] > 50000) & (df['Payee_Account_Age_Days'] < 30)
-    df.loc[digital_arrest_mask, 'Is_Fraud'] = 1
-
-    # 2. "OTP Theft" Pattern: Multiple failed OTPs + New Device + Fast UPI/IMPS transfer
-    otp_theft_mask = (df['OTP_Failed_Attempts'] >= 2) & (df['New_Device_Used'] == 1) & (df['Transaction_Type'].isin(['UPI', 'IMPS']))
-    df.loc[otp_theft_mask, 'Is_Fraud'] = 1
-
-    # 3. "Fake QR Code" Pattern: Small/Medium UPI scan + Brand new payee account + Unusual time (Late night)
-    fake_qr_mask = (df['Transaction_Type'] == 'UPI') & (df['Payee_Account_Age_Days'] <= 2) & ((df['Time_of_Day'] > 22) | (df['Time_of_Day'] < 4))
-    df.loc[fake_qr_mask, 'Is_Fraud'] = 1
-
-    # Add some random baseline fraud (0.5% of remaining)
-    normal_mask = df['Is_Fraud'] == 0
-    random_fraud_indices = df[normal_mask].sample(frac=0.005).index
-    df.loc[random_fraud_indices, 'Is_Fraud'] = 1
-
-    print(f"Total Transactions: {len(df)}")
-    print(f"Total Fraud Cases Simulated: {df['Is_Fraud'].sum()} ({df['Is_Fraud'].mean():.2%})")
-
-    # Save to CSV
+    df = pd.DataFrame({
+        'Transaction_ID': np.arange(10000, 10000 + num_samples),
+        'Transaction_Amount': np.round(amounts, 2),
+        'Time_of_Day': times,
+        'Transaction_Type': tx_types,
+        'Active_Call_Duration_Min': call_durations,
+        'OTP_Failed_Attempts': otp_failures,
+        'New_Device_Used': new_devices,
+        'Payee_Account_Age_Days': payee_ages,
+        'Is_Fraud': labels
+    })
+    
     os.makedirs("data/raw", exist_ok=True)
-    filepath = "data/raw/synthetic_bank_fraud.csv"
-    df.to_csv(filepath, index=False)
-    print(f"✅ Dataset successfully saved to {filepath}")
+    df.to_csv("data/raw/synthetic_bank_fraud.csv", index=False)
+    print(f"Generated {num_samples} records. Total Fraud Cases: {labels.sum()}")
 
 if __name__ == "__main__":
     generate_synthetic_data()
