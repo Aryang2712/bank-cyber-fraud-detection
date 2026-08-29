@@ -1,6 +1,6 @@
 """
 src/app.py — Streamlit UI for Bank Cyber Fraud Detection
-Author  : Ekansh Gupta (Frontend Architect)
+Author  : Ekansh Gupta (Frontend)
 Purpose : Four-tab Streamlit dashboard:
           Tab 1 — Real-Time Monitor  : Honeypot transaction form → POST /predict
           Tab 2 — Live Threat Board  : Priority Queue from Aryan's generate_priority_queue()
