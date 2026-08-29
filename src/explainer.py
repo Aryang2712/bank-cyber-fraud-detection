@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import shap
+from PIL import Image
 
 
 class FraudExplainer:
-    """Explains cyber fraud predictions using clean 4-panel SHAP metrics."""
+    """Explains cyber fraud predictions using clean, non-overlapping SHAP metrics."""
 
     def __init__(
         self,
@@ -34,16 +35,14 @@ class FraudExplainer:
         ),
     ):
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        temp_dir = os.path.join("reports", "figures", "temp")
+        os.makedirs(temp_dir, exist_ok=True)
 
         shap_values_sample = self.explainer(transaction_df)
         shap_values_global = self.explainer(background_data)
 
-        # Create large figure with proper spacing
-        fig = plt.figure(figsize=(20, 12))
-
-        # Panel A: Summary Plot (Top-Left)
-        ax1 = fig.add_subplot(2, 2, 1)
-        plt.sca(ax1)
+        # ------------------ Plot 1: Summary Plot ------------------
+        plt.figure(figsize=(7, 5))
         shap.summary_plot(
             shap_values_global[:, :, 1]
             if len(shap_values_global.shape) == 3
@@ -52,16 +51,14 @@ class FraudExplainer:
             show=False,
             plot_type="dot",
         )
-        ax1.set_title(
-            "Global Feature Impact (SHAP Summary)",
-            fontsize=12,
-            fontweight="bold",
-            pad=10,
-        )
+        plt.title("Global Feature Impact (SHAP Summary)", fontsize=11, fontweight="bold", pad=12)
+        plt.tight_layout()
+        path1 = os.path.join(temp_dir, "plot1.png")
+        plt.savefig(path1, dpi=200, bbox_inches="tight")
+        plt.close("all")
 
-        # Panel B: Multi-line Decision Plot (Top-Right)
-        ax2 = fig.add_subplot(2, 2, 2)
-        plt.sca(ax2)
+        # ------------------ Plot 2: Decision Plot ------------------
+        plt.figure(figsize=(7, 5))
         bg_shap_sample = (
             shap_values_global.values[:10, :, 1]
             if len(shap_values_global.shape) == 3
@@ -72,7 +69,6 @@ class FraudExplainer:
             if isinstance(self.explainer.expected_value, (list, np.ndarray))
             else self.explainer.expected_value
         )
-
         shap.decision_plot(
             base_val,
             bg_shap_sample,
@@ -80,16 +76,14 @@ class FraudExplainer:
             feature_names=background_data.columns.tolist(),
             show=False,
         )
-        ax2.set_title(
-            f"Interactive Decision Convergence ({transaction_id})",
-            fontsize=12,
-            fontweight="bold",
-            pad=10,
-        )
+        plt.title(f"Decision Convergence ({transaction_id})", fontsize=11, fontweight="bold", pad=12)
+        plt.tight_layout()
+        path2 = os.path.join(temp_dir, "plot2.png")
+        plt.savefig(path2, dpi=200, bbox_inches="tight")
+        plt.close("all")
 
-        # Panel C: Feature Importance Bar Chart (Bottom-Left)
-        ax3 = fig.add_subplot(2, 2, 3)
-        plt.sca(ax3)
+        # ------------------ Plot 3: Importance Bar ------------------
+        plt.figure(figsize=(7, 5))
         importance_scores = pd.DataFrame(
             {
                 "Feature": background_data.columns,
@@ -97,52 +91,75 @@ class FraudExplainer:
             }
         ).sort_values(by="Importance", ascending=True)
 
-        ax3.barh(
-            importance_scores["Feature"],
-            importance_scores["Importance"],
-            color="#1f77b4",
-        )
-        ax3.set_title(
-            "Model-Wide Feature Importance",
-            fontsize=12,
-            fontweight="bold",
-            pad=10,
-        )
-        ax3.set_xlabel("Relative Importance Score", fontsize=10)
+        plt.barh(importance_scores["Feature"], importance_scores["Importance"], color="#1f77b4")
+        plt.title("Model-Wide Feature Importance", fontsize=11, fontweight="bold", pad=12)
+        plt.xlabel("Relative Importance Score", fontsize=10)
+        plt.tight_layout()
+        path3 = os.path.join(temp_dir, "plot3.png")
+        plt.savefig(path3, dpi=200, bbox_inches="tight")
+        plt.close("all")
 
-        # Panel D: Local Explanation Heatmap (Bottom-Right)
-        ax4 = fig.add_subplot(2, 2, 4)
-        plt.sca(ax4)
+        # ------------------ Plot 4: Local Heatmap ------------------
+        plt.figure(figsize=(7, 5))
         shap_values_heatmap = (
             shap_values_global[:20, :, 1]
             if len(shap_values_global.shape) == 3
             else shap_values_global[:20]
         )
         shap.plots.heatmap(shap_values_heatmap, show=False)
-        ax4.set_title(
-            "Local Explanation Clusters (Heatmap)",
-            fontsize=12,
-            fontweight="bold",
-            pad=10,
-        )
+        plt.title("Local Explanation Clusters (Heatmap)", fontsize=11, fontweight="bold", pad=12)
+        plt.tight_layout()
+        path4 = os.path.join(temp_dir, "plot4.png")
+        plt.savefig(path4, dpi=200, bbox_inches="tight")
+        plt.close("all")
 
-        # Main Title & Subplot Spacing (prevents text overlap)
-        fig.suptitle(
+        # ------------------ Stitch Plots into Final Canvas ------------------
+        img1 = Image.open(path1)
+        img2 = Image.open(path2)
+        img3 = Image.open(path3)
+        img4 = Image.open(path4)
+
+        # Target size for each quadrant
+        w, h = 1200, 900
+        img1 = img1.resize((w, h), Image.Resampling.LANCZOS)
+        img2 = img2.resize((w, h), Image.Resampling.LANCZOS)
+        img3 = img3.resize((w, h), Image.Resampling.LANCZOS)
+        img4 = img4.resize((w, h), Image.Resampling.LANCZOS)
+
+        title_height = 120
+        canvas_w = w * 2 + 60
+        canvas_h = h * 2 + title_height + 60
+
+        # White canvas background
+        dashboard = Image.new("RGB", (canvas_w, canvas_h), (255, 255, 255))
+
+        # Paste subplots
+        dashboard.paste(img1, (20, title_height))
+        dashboard.paste(img2, (w + 40, title_height))
+        dashboard.paste(img3, (20, title_height + h + 20))
+        dashboard.paste(img4, (w + 40, title_height + h + 20))
+
+        # Add global super-title directly via Matplotlib canvas overlay
+        fig, ax = plt.subplots(figsize=(canvas_w / 100, canvas_h / 100), dpi=100)
+        ax.imshow(dashboard)
+        ax.axis("off")
+        plt.title(
             "XAI Audit Deep-Dive: Shadow Transfer Risk Profiling",
-            fontsize=16,
+            fontsize=22,
             fontweight="bold",
-            y=0.98,
+            pad=20,
         )
-        plt.subplots_adjust(
-            left=0.1, right=0.95, top=0.90, bottom=0.08, wspace=0.35, hspace=0.35
-        )
+        plt.savefig(output_path, dpi=150, bbox_inches="tight")
+        plt.close("all")
 
-        plt.savefig(output_path, dpi=300, bbox_inches="tight")
-        plt.close()
+        # Cleanup temporary slice files
+        for p in [path1, path2, path3, path4]:
+            if os.path.exists(p):
+                os.remove(p)
+        if os.path.exists(temp_dir):
+            os.rmdir(temp_dir)
 
-        print(
-            f"[SUCCESS] Clean 4-panel SHAP audit plot saved to: {output_path}"
-        )
+        print(f"[SUCCESS] Clean audit dashboard saved to: {output_path}")
 
 
 def generate_digital_arrest_sample() -> pd.DataFrame:
@@ -165,14 +182,10 @@ def generate_background_data(n_samples=200) -> pd.DataFrame:
     np.random.seed(42)
     return pd.DataFrame(
         {
-            "Active_Call_Duration_Min": np.random.uniform(
-                0.5, 120.0, n_samples
-            ),
+            "Active_Call_Duration_Min": np.random.uniform(0.5, 120.0, n_samples),
             "Transaction_Amount": np.random.uniform(10.0, 500000.0, n_samples),
             "OTP_Failed_Attempts": np.random.randint(0, 5, n_samples),
-            "New_Payee_Added_Mins_Ago": np.random.uniform(
-                1.0, 10000.0, n_samples
-            ),
+            "New_Payee_Added_Mins_Ago": np.random.uniform(1.0, 10000.0, n_samples),
             "Is_New_Device": np.random.binomial(1, 0.1, n_samples),
             "Is_High_Risk_IP": np.random.binomial(1, 0.05, n_samples),
             "Account_Age_Days": np.random.uniform(1.0, 5000.0, n_samples),
