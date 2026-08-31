@@ -1,11 +1,13 @@
 """
 frontend/dashboard.py — Standalone Frontend Entry Point
-Purpose : Thin launcher that re-exports src/app.py so the dashboard can be
+Purpose : Thin launcher that re-exports src/dashboard.py so the dashboard can be
           started from EITHER location:
+
           From project root:
               streamlit run frontend/dashboard.py
           OR:
-              streamlit run src/app.py
+              streamlit run src/dashboard.py
+
           Both commands produce an identical result.
 """
 
@@ -27,5 +29,5 @@ if ROOT not in sys.path:
 os.chdir(ROOT)
 
 # Run the main Streamlit application
-app_module = os.path.join(src_path, "app.py")
-runpy.run_path(app_module, run_name="__main__")
+dashboard_module = os.path.join(src_path, "dashboard.py")
+runpy.run_path(dashboard_module, run_name="__main__")

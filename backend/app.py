@@ -54,19 +54,22 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 MODEL_PATH   = os.path.join("models", "new_fraud_model.pkl")
 COLUMNS_PATH = os.path.join("models", "model_columns.pkl")
+SCALER_PATH  = os.path.join("models", "scaler.pkl")
 
 _model         = None
 _model_columns = None
+_scaler        = None
 
 
 def _load_model() -> None:
-    global _model, _model_columns
+    global _model, _model_columns, _scaler
     if not os.path.exists(MODEL_PATH):
         logger.warning(f"Model not found at {MODEL_PATH}. Predictions will use fallback heuristics.")
         return
     _model         = joblib.load(MODEL_PATH)
     _model_columns = joblib.load(COLUMNS_PATH)
-    logger.info("AI Model loaded successfully.")
+    _scaler        = joblib.load(SCALER_PATH) if os.path.exists(SCALER_PATH) else None
+    logger.info("AI Model and Scaler loaded successfully.")
 
 
 @app.on_event("startup")
@@ -248,6 +251,16 @@ def _run_inference(req: TransactionRequest) -> float:
         row[f"Transaction_Type_{tt}"] = 1 if req.transaction_type == tt else 0
 
     df = pd.DataFrame([row])
+    if _scaler is not None:
+        num_cols = [
+            "Transaction_Amount",
+            "Active_Call_Duration_Min",
+            "New_Payee_Added_Mins_Ago",
+            "Account_Age_Days",
+        ]
+        available_num_cols = [c for c in num_cols if c in df.columns]
+        df[available_num_cols] = _scaler.transform(df[available_num_cols])
+
     for col in _model_columns:
         if col not in df.columns:
             df[col] = 0

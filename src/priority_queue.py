@@ -14,13 +14,26 @@ def generate_priority_queue(data_path="data/raw/synthetic_bank_fraud.csv",
 
     # 1. Load model and raw data
     model = joblib.load(model_path)
-    model_columns = joblib.load("models/model_columns.pkl")
+    model_columns_path = os.path.join(os.path.dirname(model_path), "model_columns.pkl")
+    model_columns = joblib.load(model_columns_path)
     df = pd.read_csv(data_path)
     
     # 2. Isolate amounts and process data for inference
     original_amounts = df['Transaction_Amount'].values
     df_processed = pd.get_dummies(df, columns=['Transaction_Type'])
     
+    scaler_path = os.path.join(os.path.dirname(model_path), "scaler.pkl")
+    if os.path.exists(scaler_path):
+        scaler = joblib.load(scaler_path)
+        num_cols = [
+            'Transaction_Amount',
+            'Active_Call_Duration_Min',
+            'New_Payee_Added_Mins_Ago',
+            'Account_Age_Days',
+        ]
+        available_num_cols = [c for c in num_cols if c in df_processed.columns]
+        df_processed[available_num_cols] = scaler.transform(df_processed[available_num_cols])
+
     # Ensure all columns match the trained model
     for col in model_columns:
         if col not in df_processed.columns:
@@ -47,6 +60,10 @@ def generate_priority_queue(data_path="data/raw/synthetic_bank_fraud.csv",
     return priority_queue
 
 if __name__ == "__main__":
+    import sys
+    if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     queue = generate_priority_queue()
     
     if queue is not None:
