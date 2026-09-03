@@ -1,21 +1,28 @@
 import pandas as pd
 import joblib
 import os
+from pathlib import Path
 
-def generate_priority_queue(data_path="data/raw/synthetic_bank_fraud.csv", 
-                            model_path="models/new_fraud_model.pkl",
-                            threshold=0.5):
+# Absolute paths make this bulletproof against Streamlit's folder logic
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+def generate_priority_queue(threshold=0.5):
     """
     Calculates expected financial loss for modern cyber fraud threats.
     """
-    if not os.path.exists(model_path) or not os.path.exists(data_path):
+    data_path = BASE_DIR / "data" / "raw" / "synthetic_bank_fraud.csv"
+    model_path = BASE_DIR / "models" / "new_fraud_model.pkl"
+    scaler_path = BASE_DIR / "models" / "scaler.pkl"
+    columns_path = BASE_DIR / "models" / "model_columns.pkl"
+
+    if not data_path.exists() or not model_path.exists():
         print("Error: Missing data or model.")
         return None
 
-   # 1. Load model, scaler, and raw data
+    # 1. Load model, scaler, and raw data
     model = joblib.load(model_path)
-    scaler = joblib.load("models/scaler.pkl") # <-- ADD THIS
-    model_columns = joblib.load("models/model_columns.pkl")
+    scaler = joblib.load(scaler_path)
+    model_columns = joblib.load(columns_path)
     df = pd.read_csv(data_path)
     
     # 2. Process data for inference
@@ -26,9 +33,8 @@ def generate_priority_queue(data_path="data/raw/synthetic_bank_fraud.csv",
         if col not in df_processed.columns:
             df_processed[col] = 0
             
-    X_inference = df_processed[model_columns].copy() # Use .copy() to avoid warnings
+    X_inference = df_processed[model_columns].copy() 
     
-    # <-- ADD THESE 2 LINES TO SCALE THE DATA BEFORE INFERENCE -->
     num_cols = ['Transaction_Amount', 'Time_of_Day', 'Active_Call_Duration_Min', 'Payee_Account_Age_Days']
     X_inference[num_cols] = scaler.transform(X_inference[num_cols])
     
@@ -39,8 +45,8 @@ def generate_priority_queue(data_path="data/raw/synthetic_bank_fraud.csv",
     results = pd.DataFrame({
         'Tx_ID': df['Transaction_ID'],
         'Amount': original_amounts,
-        'Call_Mins': df['Active_Call_Duration_Min'], # Added to show Digital Arrest context!
-        'OTP_Fails': df['OTP_Failed_Attempts'],      # Added to show OTP Theft context!
+        'Call_Mins': df['Active_Call_Duration_Min'], 
+        'OTP_Fails': df['OTP_Failed_Attempts'],      
         'Fraud_Probability': probabilities,
         'Expected_Loss': probabilities * original_amounts,
     })
@@ -58,10 +64,7 @@ if __name__ == "__main__":
         print("\n🚨 HIGH-VALUE CYBER THREAT PRIORITIZATION QUEUE 🚨")
         formatted_queue = queue.head(10).copy()
         
-        # Insert Priority Number as the very first column
         formatted_queue.insert(0, 'Priority', range(1, len(formatted_queue) + 1))
-        
-        # Apply clean formatting with Rupees (₹)
         formatted_queue['Amount'] = formatted_queue['Amount'].apply(lambda x: f"₹{x:,.2f}")
         formatted_queue['Expected_Loss'] = formatted_queue['Expected_Loss'].apply(lambda x: f"₹{x:,.2f}")
         formatted_queue['Fraud_Probability'] = formatted_queue['Fraud_Probability'].apply(lambda x: f"{x:.2%}")
