@@ -30,7 +30,7 @@ async def verify_transaction(request: Request):
         "Transaction_Amount": [amount],
         "Active_Call_Duration_Min": [call_dur],
         "OTP_Failed_Attempts": [otp_fails],
-        "Is_New_Device": [int(new_device)],
+        "New_Device_Used": [int(new_device)],   # FIX: must match training column name (was "Is_New_Device")
         "Payee_Account_Age_Days": [age_days],
         "Time_of_Day": [time_of_day],
     }
