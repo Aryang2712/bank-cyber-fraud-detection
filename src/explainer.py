@@ -5,14 +5,15 @@ import numpy as np
 import pandas as pd
 import shap
 from PIL import Image
-
+from data_prep import load_and_preprocess_data
 
 class FraudExplainer:
     """Explains cyber fraud predictions using clean, non-overlapping SHAP metrics."""
 
     def __init__(
         self,
-        model_path: str = os.path.join("models", "random_forest.pkl"),
+        # FIXED BUG 1: Points to Suyash's new XGBoost model
+        model_path: str = os.path.join("models", "new_fraud_model.pkl"),
         scaler_path: str = os.path.join("models", "scaler.pkl"),
     ):
         if not os.path.exists(model_path):
@@ -162,43 +163,21 @@ class FraudExplainer:
         print(f"[SUCCESS] Clean audit dashboard saved to: {output_path}")
 
 
-def generate_digital_arrest_sample() -> pd.DataFrame:
-    return pd.DataFrame(
-        [
-            {
-                "Active_Call_Duration_Min": 120.0,
-                "Transaction_Amount": 450000.0,
-                "OTP_Failed_Attempts": 3.0,
-                "New_Payee_Added_Mins_Ago": 5.0,
-                "Is_New_Device": 1.0,
-                "Is_High_Risk_IP": 1.0,
-                "Account_Age_Days": 15.0,
-            }
-        ]
-    )
-
-
-def generate_background_data(n_samples=200) -> pd.DataFrame:
-    np.random.seed(42)
-    return pd.DataFrame(
-        {
-            "Active_Call_Duration_Min": np.random.uniform(0.5, 120.0, n_samples),
-            "Transaction_Amount": np.random.uniform(10.0, 500000.0, n_samples),
-            "OTP_Failed_Attempts": np.random.randint(0, 5, n_samples),
-            "New_Payee_Added_Mins_Ago": np.random.uniform(1.0, 10000.0, n_samples),
-            "Is_New_Device": np.random.binomial(1, 0.1, n_samples),
-            "Is_High_Risk_IP": np.random.binomial(1, 0.05, n_samples),
-            "Account_Age_Days": np.random.uniform(1.0, 5000.0, n_samples),
-        }
-    )
-
-
 if __name__ == "__main__":
     print("Executing SHAP Explainer Module...")
-    sample_transaction = generate_digital_arrest_sample()
-    background_data = generate_background_data()
-
+    
+    # FIXED BUG 2: Using the real data pipeline from Ekansh instead of fake columns
+    _, X_test, _, _, _ = load_and_preprocess_data()
+    
     explainer = FraudExplainer()
+    
+    # Find the most severe fraud case in the test set to demonstrate
+    probabilities = explainer.model.predict_proba(X_test)[:, 1]
+    highest_risk_index = probabilities.argmax()
+    
+    sample_transaction = X_test.iloc[[highest_risk_index]]
+    background_data = X_test.sample(100, random_state=42) # 100 real background samples
+    
     explainer.generate_audit_dashboard(
-        "T12345", sample_transaction, background_data
+        "TXN_CRITICAL_001", sample_transaction, background_data
     )

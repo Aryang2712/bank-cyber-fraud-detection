@@ -12,23 +12,28 @@ def generate_priority_queue(data_path="data/raw/synthetic_bank_fraud.csv",
         print("Error: Missing data or model.")
         return None
 
-    # 1. Load model and raw data
+   # 1. Load model, scaler, and raw data
     model = joblib.load(model_path)
+    scaler = joblib.load("models/scaler.pkl") # <-- ADD THIS
     model_columns = joblib.load("models/model_columns.pkl")
     df = pd.read_csv(data_path)
     
-    # 2. Isolate amounts and process data for inference
+    # 2. Process data for inference
     original_amounts = df['Transaction_Amount'].values
     df_processed = pd.get_dummies(df, columns=['Transaction_Type'])
     
-    # Ensure all columns match the trained model
     for col in model_columns:
         if col not in df_processed.columns:
             df_processed[col] = 0
-    X_inference = df_processed[model_columns]
+            
+    X_inference = df_processed[model_columns].copy() # Use .copy() to avoid warnings
+    
+    # <-- ADD THESE 2 LINES TO SCALE THE DATA BEFORE INFERENCE -->
+    num_cols = ['Transaction_Amount', 'Time_of_Day', 'Active_Call_Duration_Min', 'Payee_Account_Age_Days']
+    X_inference[num_cols] = scaler.transform(X_inference[num_cols])
     
     # 3. Extract exact probabilities
-    probabilities = model.predict_proba(X_inference)[:, 1] 
+    probabilities = model.predict_proba(X_inference)[:, 1]
     
     # 4. Apply Novelty 1: Expected Financial Loss
     results = pd.DataFrame({
